@@ -397,7 +397,7 @@ void houghCircleDetectionImpl(Matrice& image){
         
     }
 
-    print(" Local maximum determination into accumulator" << RED << " N.A" << RESET);
+    print(" Local maximum determination into accumulator" << GREEN << " done" << RESET);
     print(" " << BOLD << circles.size() << " circles finded & " << count << " local maxima finded " << RESET);
 
 
@@ -409,10 +409,10 @@ void houghCircleDetectionImpl(Matrice& image){
     }
     
     displayImage("Final", image);
-    print(" Hough Circle determination & draw" << RED << " N.A" << RESET);
+    print(" Hough Circle determination & draw" << GREEN << " done" << RESET);
 
 
-    print(RED << "Not done !" << RESET);
+    print(GREEN << "Done Successfully!" << RESET);
 }
 
 int main(int argc, char* argv[])
