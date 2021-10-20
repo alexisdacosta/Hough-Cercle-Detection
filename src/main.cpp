@@ -418,8 +418,8 @@ void houghCircleDetectionImpl(Matrice& image){
 int main(int argc, char* argv[])
 {
     print(BOLD << DIV << "TI - TP2 : Circle Detection by Hough Transform" << DIV << "\n" << RESET
-                      << " Julien SAVE & Alexis DA COSTA\n"
-                      << " APP5 Info - Polytech Paris-Saclay ©\n");
+                      << " Julien SAVE & Alexis DA COSTA \n"
+                      << " APP5 Info - Polytech Paris-Saclay © \n");
     
     if (argc != 2)
         exception(0, "Argument missing : image to analyse path");
