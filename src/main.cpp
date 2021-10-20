@@ -19,6 +19,12 @@
 #include <fstream>
 #include <math.h>
 #include <unistd.h>
+#include <algorithm>
+#include <iostream>
+#include <list>
+#include <numeric>
+#include <random>
+#include <vector>
 
 #define DIV         " ========== "          /* Divider */
 #define UNDER       "\033[4m"                /* Underline */
@@ -47,6 +53,9 @@ typedef std::string string;
 #define displayImage(title, path) {cv::imshow(title, path);};
 #define print(x) {std::cout<<x<<"\n";};
 #define exception(code, message){ std::cerr << BOLDRED << "ERROR : " << RESET << RED << code << " - " << message << RESET << "\n"; exit(code);}
+
+
+using circle = std::vector<size_t>; 
 
 /**
  * @brief Convert a image to a matrix
@@ -212,8 +221,8 @@ void houghCircleDetectionImpl(Matrice& image){
 
     // Kernel Hy
     Matrice Hy = (cv::Mat_<double>(3,3) <<  -1, -2, -1, 
-                                            0, 0, 0, 
-                                            1, 2, 1);
+                                             0,  0,  0, 
+                                             1,  2,  1);
 
 
     // Calcul du Produit de Convolution 
@@ -274,41 +283,132 @@ void houghCircleDetectionImpl(Matrice& image){
 
     
     // Creating Accumulator 3D Matrix
-    int size[] {10, 10, 10};
-    Matrice acc = cv::Mat::zeros(3, size, cv::COLOR_BGR2GRAY);
-    /// N.A
-    print(" Accumulator 3D Matrix creation & zero initialization" << RED << " N.A" << RESET);
+    int deltar = 1, rmin = 0, rmax = image.rows;
+    int deltac = 1, cmin = 0, cmax = image.cols;
+    int radmax = 90;
+    int radmin = 4;
+    int deltaRad = 1;
 
+    int size[] {rmax, cmax, radmax - radmin};
+    Matrice acc = cv::Mat::zeros(3, size, cv::COLOR_BGR2GRAY);
+
+    print(" Accumulator 3D Matrix creation & zero initialization" << GREEN << " done" << RESET
+        << "\n Accumulator 3D Matrix Size :" << BOLD << " size = " << acc.size << RESET);
+    
 
     // Edges pixel selection
-    Matrice im = cv::Mat::zeros(image.rows, image.cols, cv::COLOR_BGR2GRAY);
-    for (size_t i = 0; i < image.rows; i++)
+    Matrice edges;
+    magnitudeGradientA.copyTo(edges);
+
+    for (size_t ir = 0; ir < edges.rows; ir++)
     {
-        for (size_t j = 0; j < image.cols; j++)
+        for (size_t jc = 0; jc < edges.cols; jc++)
         {
-            if (image.at<double>(i,j) >= t)
-                im.at<double>(i,j) = 255; 
-            else
-                im.at<double>(i,j) = 0;  
+            if (edges.at<uchar>(ir,jc) >= t){
+                edges.at<uchar>(ir,jc) = 255; 
+            }
+            else{
+                edges.at<uchar>(ir,jc) = 0;  
+            }
         }
     }
-    /// N.A
-    displayImage("tests", im);
-    print(" Edges pixel selection" << RED << " N.A" << RESET);
+    displayImage("Edges", edges);
+    print(" Edges pixel selection" << GREEN << " done" << RESET);
 
 
     // All possible circles vote
-    /// N.A
-    print(" All possible circles in accumulator vote" << RED << " N.A" << RESET);
+    int c = 0;
+    double bgrPixel;
+    double a, b, h;
+    t = 0.5 * t; 
+
+    if (edges.rows != image.rows && edges.cols != edges.cols)
+        exception(8, "MERDE");
+
+    for (int i = 0; i < edges.rows; i++)
+    {
+        for (int j = 0; j < edges.cols; j++)
+        {
+            int bgrPixel = edges.at<uchar>(i, j);
+            if ((int)bgrPixel >= (int)t ){
+                for (int k = 0; k < acc.size[0]; k++)
+                {
+                    for (int l = 0; l < acc.size[1]; l++)
+                    {
+                        a = std::abs((i * deltar + rmin) - (k * deltar + rmin));
+                        b = std::abs((j * deltac + cmin) - (l * deltac + cmin));
+                        h = sqrt(a * a + b * b);
+                        
+                        if (radmin < h && h < radmax) {
+                            acc.at<double>(k,l,(int)(h / deltaRad - radmin)) += 1.0 / h;  
+                        }        
+                    }
+                }
+            }
+        }
+    }
+    print(" The Best Candidate Cercle vote into accumulator 3D Matrix" << GREEN << " done" << RESET);
 
 
     // Local maximum determination 
-    /// N.A
+    int findSize = 26; 
+    int weight = 3; 
+    using circle = std::vector<size_t>; 
+    std::vector<circle> circles; 
+    int count = 0; 
+
+    for (size_t i = 0; i < acc.size[0]; i++)
+    {
+        for (size_t j = 0; j < acc.size[1]; j++)
+        {
+            for (size_t k = 0; k < acc.size[2]; k++)
+            {
+                bool isMax = true;
+                for (size_t ii = i - 1 ; ii <= i + 1; ii++)
+                {
+                    for (size_t jj = j - 1; jj <= j + 1; jj++)
+                    {
+                        for (size_t kk = k - 1; kk <= k + 1; kk++)
+                        {
+                            if((ii != i || jj != j || kk != k) 
+                            && (ii > 0 && ii < acc.size[0]) 
+                            && (jj > 0 && jj < acc.size[1]) 
+                            && (kk > 0 && kk < acc.size[2])){
+                                if (acc.at<double>(ii,jj,kk) > acc.at<double>(i,j,k)){
+                                    isMax = false;
+                                    break;
+                                }
+                            }
+                            if (isMax == false) break; 
+                        }
+                        if (isMax == false) break; 
+                    }
+                    if (isMax == false) break; 
+                }
+                if (isMax) count++;
+
+                if(isMax && acc.at<double>(i,j,k) > weight){
+                    circles.push_back({i,j,k,(std::size_t)acc.at<double>(i,j,k)});
+                }
+                
+            }
+            
+        }
+        
+    }
+
     print(" Local maximum determination into accumulator" << RED << " N.A" << RESET);
+    print(" " << BOLD << circles.size() << " circles finded & " << count << " local maxima finded " << RESET);
 
 
     // Hough Circle determination & draw
-    /// N.A
+    for (auto e:circles){
+        cv::Point center(cvRound((double)e[1]), cvRound((double)e[0]));
+        int radius = cvRound((double)e[2]);
+        cv::circle(image, center, radius, cv::Scalar(0,255,0), 3, cv::LINE_AA);
+    }
+    
+    displayImage("Final", image);
     print(" Hough Circle determination & draw" << RED << " N.A" << RESET);
 
 
@@ -319,14 +419,15 @@ int main(int argc, char* argv[])
 {
     print(BOLD << DIV << "TI - TP2 : Circle Detection by Hough Transform" << DIV << "\n" << RESET
                       << " Julien SAVE & Alexis DA COSTA\n"
-                      << " APP4 Info - Polytech Paris-Saclay ©\n");
+                      << " APP5 Info - Polytech Paris-Saclay ©\n");
     
     if (argc != 2)
         exception(0, "Argument missing : image to analyse path");
 
-    print("Image to analyse : " << UNDER << BOLD << argv[1] << RESET << "\n");
+    print("Image to analyse : " << UNDER << BOLD << argv[1] << RESET);
 
     Matrice image = fileToMatrice(argv[1]);
+    print(" size = [" << image.rows << ", " << image.cols << "]\n" );
     displayImage("Image brut", image);
 
     gaussianFilter(image); 
