@@ -352,7 +352,7 @@ void houghCircleDetectionImpl(Matrice& image){
 
     // Local maximum determination 
     int findSize = 26; 
-    int weight = 3; 
+    int weight = 4.5; 
     using circle = std::vector<size_t>; 
     std::vector<circle> circles; 
     int count = 0; 
