@@ -1,4 +1,4 @@
-# Hough Cercle Detection TP
+# Hough Cercle Detection
 
 ## Makefile command line
 ### Build
