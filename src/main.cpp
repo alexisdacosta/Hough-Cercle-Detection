@@ -25,6 +25,9 @@
 #include <numeric>
 #include <random>
 #include <vector>
+#include <chrono>
+
+
 
 #define DIV         " ========== "          /* Divider */
 #define UNDER       "\033[4m"                /* Underline */
@@ -436,8 +439,18 @@ int main(int argc, char* argv[])
     image.copyTo(imgWithLib);
     image.copyTo(imgWithoutLib); 
 
+    auto start = std::chrono::high_resolution_clock::now();
     houghCircleDetectionWithLib(imgWithLib);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> temps = end - start;
+    std::cout << "temps passé : " << temps.count() << " millisecondes\n";
+
+    start = std::chrono::high_resolution_clock::now();
     houghCircleDetectionImpl(imgWithoutLib);
+    end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> temps2 = end - start;
+    std::cout << "temps passé : " << temps2.count() << " millisecondes\n";
+    
 
     cv::waitKey(0);
 
