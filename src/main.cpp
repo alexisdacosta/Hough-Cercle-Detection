@@ -57,6 +57,10 @@ typedef std::string string;
 #define print(x) {std::cout<<x<<"\n";};
 #define exception(code, message){ std::cerr << BOLDRED << "ERROR : " << RESET << RED << code << " - " << message << RESET << "\n"; exit(code);}
 
+bool optimization = false;
+double weight = -1; 
+int radmax = -1;
+int radmin = -1;
 
 using circle = std::vector<size_t>; 
 
@@ -194,7 +198,7 @@ void houghCircleDetectionWithLib(Matrice& image) {
     }
     
     displayImage("Hough Cercle Detection with OpenCV function", image);
-    print(GREEN << "Done successfully\n" << RESET);
+    print(GREEN << "Done successfully" << RESET);
 }
 
 /**
@@ -288,8 +292,8 @@ void houghCircleDetectionImpl(Matrice& image){
     // Creating Accumulator 3D Matrix
     int deltar = 1, rmin = 0, rmax = image.rows;
     int deltac = 1, cmin = 0, cmax = image.cols;
-    int radmax = 90;
-    int radmin = 4;
+    // int radmax = 90;
+    // int radmin = 10;
     int deltaRad = 1;
 
     int size[] {rmax, cmax, radmax - radmin};
@@ -321,19 +325,18 @@ void houghCircleDetectionImpl(Matrice& image){
 
     // All possible circles vote
     int c = 0;
-    double bgrPixel;
     double a, b, h;
-    t = 0.5 * t; 
+    t = 0.9 * t; 
 
-    if (edges.rows != image.rows && edges.cols != edges.cols)
-        exception(8, "MERDE");
+    if (edges.rows != image.rows && edges.cols != image.cols)
+        exception(8, "The edges image hasn't the same size with the original image");
 
     for (int i = 0; i < edges.rows; i++)
     {
         for (int j = 0; j < edges.cols; j++)
         {
-            int bgrPixel = edges.at<uchar>(i, j);
-            if ((int)bgrPixel >= (int)t ){
+            int pixel = edges.at<uchar>(i, j);
+            if ((int)pixel >= (int)t ){
                 for (int k = 0; k < acc.size[0]; k++)
                 {
                     for (int l = 0; l < acc.size[1]; l++)
@@ -355,7 +358,7 @@ void houghCircleDetectionImpl(Matrice& image){
 
     // Local maximum determination 
     int findSize = 26; 
-    int weight = 4.5; 
+    // double weight = 3.5; 
     using circle = std::vector<size_t>; 
     std::vector<circle> circles; 
     int count = 0; 
@@ -408,15 +411,21 @@ void houghCircleDetectionImpl(Matrice& image){
     for (auto e:circles){
         cv::Point center(cvRound((double)e[1]), cvRound((double)e[0]));
         int radius = cvRound((double)e[2]);
-        cv::circle(image, center, radius, cv::Scalar(0,255,0), 3, cv::LINE_AA);
+        cv::circle(image, center, radius + radmin, cv::Scalar(0,255,0), 2, cv::LINE_AA);
     }
     
     displayImage("Final", image);
     print(" Hough Circle determination & draw" << GREEN << " done" << RESET);
-
+    
+    if (optimization){
+        Matrice image3; 
+        cv::resize(image, image3, cv::Size(), 2, 2);
+        displayImage("Final Image", image3);
+    }
 
     print(GREEN << "Done Successfully!" << RESET);
 }
+
 
 int main(int argc, char* argv[])
 {
@@ -424,16 +433,32 @@ int main(int argc, char* argv[])
                       << " Julien SAVE & Alexis DA COSTA \n"
                       << " APP5 Info - Polytech Paris-Saclay © \n");
     
-    if (argc != 2)
-        exception(0, "Argument missing : image to analyse path");
+    if (argc != 5)
+        exception(0, "Argument missing : image to analyse path or weight or radmin or radmax\nThe good cmd for execution is : \n ./bin/TP2 ../src/images/name_image weight_value radmin_value radmax_value");
+
+    weight = atof(argv[2]); 
+    radmin = atoi(argv[3]);
+    radmax = atoi(argv[4]);
 
     print("Image to analyse : " << UNDER << BOLD << argv[1] << RESET);
+    print(" weight = " << weight << "\n radmin = " << radmin << "\n radmax = " << radmax);
 
     Matrice image = fileToMatrice(argv[1]);
     print(" size = [" << image.rows << ", " << image.cols << "]\n" );
     displayImage("Image brut", image);
 
+
     gaussianFilter(image); 
+
+    if (image.cols > 300 && image.rows > 300){
+        Matrice image2; 
+        cv::resize(image, image2, cv::Size(), 0.5, 0.5);
+        image = NULL; 
+        image2.copyTo(image);
+        print(BOLD << " The size is over 300 x 300, so we will use an optimization\n" << RESET);
+        optimization = true;
+    }
+
 
     Matrice imgWithLib, imgWithoutLib;
     image.copyTo(imgWithLib);
@@ -443,14 +468,13 @@ int main(int argc, char* argv[])
     houghCircleDetectionWithLib(imgWithLib);
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> temps = end - start;
-    std::cout << "temps passé : " << temps.count() << " millisecondes\n";
+    std::cout << "temps passé : " << temps.count() << " millisecondes\n\n";
 
     start = std::chrono::high_resolution_clock::now();
     houghCircleDetectionImpl(imgWithoutLib);
     end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> temps2 = end - start;
     std::cout << "temps passé : " << temps2.count() << " millisecondes\n";
-    
 
     cv::waitKey(0);
 
